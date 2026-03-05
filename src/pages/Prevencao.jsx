@@ -1,0 +1,380 @@
+import { useMemo } from 'react'
+import { Users, CalendarDays, LayoutGrid, Loader2, AlertTriangle } from 'lucide-react'
+import {
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  ScatterChart,
+  Scatter,
+} from 'recharts'
+import { useFilterContext } from '../hooks/useFilters'
+import { parseCurrency, formatCurrency } from '../utils/format'
+
+// ─── Cores ───────────────────────────────────────────────
+const DEPT_COLORS = ['#C41E3A', '#D4532B', '#E8734F', '#F59E0B', '#16a34a', '#2563eb', '#7c3aed', '#8B1A1A', '#0d9488', '#6366f1']
+const CARGO_BLUES = ['#1e3a5f', '#264b7a', '#2e5d94', '#3b72ad', '#4a8ac4', '#5a9bd5', '#6daedd', '#7bb8e8', '#90c5ec', '#a5d2f0']
+const DESLIG_COLORS = ['#C41E3A', '#374151', '#2563eb', '#16a34a', '#a855f7']
+
+// ─── Custom Tooltip ──────────────────────────────────────
+function BarTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]?.payload
+  if (!d) return null
+  return (
+    <div className="bg-gray-800 text-white shadow-lg rounded-lg px-3 py-2 text-xs">
+      <p className="font-medium mb-0.5">{d.name}</p>
+      <p className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-yellow-400" />
+        Quantidade – {d.count}
+      </p>
+    </div>
+  )
+}
+
+function ScatterTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]?.payload
+  if (!d) return null
+  return (
+    <div className="bg-gray-800 text-white shadow-lg rounded-lg px-3 py-2 text-xs">
+      <p className="font-medium mb-0.5">{d.cargo || 'N/A'}</p>
+      <p>Tempo: {d.x} meses</p>
+      <p>Valor: {formatCurrency(d.y)}</p>
+    </div>
+  )
+}
+
+// ─── Componente principal ────────────────────────────────
+export default function Prevencao() {
+  const { processos, loading, error } = useFilterContext()
+
+  // KPIs
+  const kpis = useMemo(() => {
+    if (!processos.length) return null
+
+    const reclamantes = new Set(
+      processos.map(p => p.nome_reclamante || p.parte_contraria).filter(Boolean)
+    ).size
+
+    const temposCasa = processos
+      .map(p => {
+        const tc = p.tempo_casa
+        if (!tc) return null
+        const num = parseFloat(String(tc).replace(/[^\d.,]/g, '').replace(',', '.'))
+        return isNaN(num) ? null : num
+      })
+      .filter(v => v !== null)
+    const tempoMedio = temposCasa.length > 0
+      ? (temposCasa.reduce((a, b) => a + b, 0) / temposCasa.length).toFixed(1)
+      : 0
+
+    const departamentos = new Set(
+      processos.map(p => p.departamento).filter(Boolean)
+    ).size
+
+    return { reclamantes, tempoMedio, departamentos }
+  }, [processos])
+
+  // Processos por Departamento
+  const deptData = useMemo(() => {
+    if (!processos.length) return []
+    const map = {}
+    processos.forEach(p => {
+      const dept = p.departamento || 'NÃO INFORMADO'
+      map[dept] = (map[dept] || 0) + 1
+    })
+    return Object.entries(map)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+  }, [processos])
+
+  // Processos por Cargo
+  const cargoData = useMemo(() => {
+    if (!processos.length) return []
+    const map = {}
+    processos.forEach(p => {
+      const cargo = p.cargo_reclamante || p.cargo || 'NÃO INFORMADO'
+      map[cargo] = (map[cargo] || 0) + 1
+    })
+    return Object.entries(map)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+  }, [processos])
+
+  // Tipo de Desligamento (donut)
+  const desligData = useMemo(() => {
+    if (!processos.length) return { items: [], total: 0 }
+    const map = {}
+    processos.forEach(p => {
+      const tipo = p.tipo_desligamento || 'Sem'
+      if (!map[tipo]) map[tipo] = { name: tipo, count: 0, value: 0 }
+      map[tipo].count++
+      map[tipo].value += parseCurrency(p.valor_provisionado)
+    })
+    const items = Object.values(map).sort((a, b) => b.count - a.count)
+    const total = items.reduce((s, i) => s + i.value, 0)
+    return { items, total }
+  }, [processos])
+
+  // Scatter: Tipo Desligamento (tempo casa vs valor)
+  const scatterData = useMemo(() => {
+    if (!processos.length) return []
+    return processos
+      .map(p => {
+        const tc = p.tempo_casa
+        if (!tc) return null
+        const meses = parseFloat(String(tc).replace(/[^\d.,]/g, '').replace(',', '.'))
+        if (isNaN(meses)) return null
+        const valor = parseCurrency(p.valor_provisionado)
+        return { x: meses, y: valor, cargo: p.cargo_reclamante || p.cargo || '' }
+      })
+      .filter(Boolean)
+  }, [processos])
+
+  // Gestores com mais processos
+  const gestorData = useMemo(() => {
+    if (!processos.length) return []
+    const map = {}
+    processos.forEach(p => {
+      const gestor = p.gestor || p.advogado_responsavel || 'Não informado'
+      map[gestor] = (map[gestor] || 0) + 1
+    })
+    return Object.entries(map)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+  }, [processos])
+
+  const maxGestor = gestorData.length > 0 ? gestorData[0].count : 1
+
+  // ─── Loading & Error ───────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="animate-spin text-accent" size={40} />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <AlertTriangle className="mx-auto mb-3 text-red-500" size={40} />
+          <p className="text-gray-700 font-medium">Erro ao carregar dados</p>
+          <p className="text-sm text-gray-500 mt-1">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="flex items-center justify-center gap-12">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
+            <Users size={24} className="text-red-500" />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Reclamantes</p>
+            <p className="text-3xl font-bold text-gray-900">{kpis?.reclamantes ?? 0}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center">
+            <CalendarDays size={24} className="text-yellow-600" />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Tempo Médio de Casa</p>
+            <p className="text-3xl font-bold text-gray-900">
+              {kpis?.tempoMedio ?? 0} <span className="text-base font-normal text-gray-400">meses</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
+            <LayoutGrid size={24} className="text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Departamentos</p>
+            <p className="text-3xl font-bold text-gray-900">{kpis?.departamentos ?? 0}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-2 gap-6">
+        {/* Processos por Departamento */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-base font-semibold text-gray-800 mb-4">Processos por Departamento</h3>
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={deptData} layout="vertical" margin={{ left: 10, right: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 9 }} />
+              <Tooltip content={<BarTooltip />} />
+              <Bar dataKey="count" name="Quantidade" radius={[0, 4, 4, 0]} barSize={20}>
+                {deptData.map((_, i) => (
+                  <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Processos por Cargo */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-base font-semibold text-gray-800 mb-4">Processos por Cargo</h3>
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={cargoData} layout="vertical" margin={{ left: 10, right: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 9 }} />
+              <Tooltip content={<BarTooltip />} />
+              <Bar dataKey="count" name="Quantidade" radius={[0, 4, 4, 0]} barSize={20}>
+                {cargoData.map((_, i) => (
+                  <Cell key={i} fill={CARGO_BLUES[i % CARGO_BLUES.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Charts Row 2 */}
+      <div className="grid grid-cols-2 gap-6">
+        {/* Tipo de Desligamento - Donut */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-base font-semibold text-gray-800 mb-4">Tipo de Desligamento</h3>
+          <div className="flex items-center">
+            <ResponsiveContainer width="55%" height={220}>
+              <PieChart>
+                <Pie
+                  data={desligData.items}
+                  dataKey="count"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={90}
+                  paddingAngle={2}
+                  label={false}
+                >
+                  {desligData.items.map((_, i) => (
+                    <Cell key={i} fill={DESLIG_COLORS[i % DESLIG_COLORS.length]} />
+                  ))}
+                </Pie>
+                <text x="50%" y="44%" textAnchor="middle" fontSize="10" fill="#666">
+                  Possível
+                </text>
+                <text x="50%" y="56%" textAnchor="middle" fontSize="10" fontWeight="600" fill="#333">
+                  {formatCurrency(desligData.total)}
+                </text>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex flex-col gap-2.5 ml-2">
+              {desligData.items.map((entry, i) => (
+                <div key={entry.name} className="flex items-center gap-2 text-sm">
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: DESLIG_COLORS[i % DESLIG_COLORS.length] }}
+                  />
+                  <span className="text-gray-700 font-medium">{entry.name}</span>
+                  <span className="text-gray-500">– {entry.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Tipo de Desligamento - Scatter */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-base font-semibold text-gray-800 mb-4">Tipo de Desligamento</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <ScatterChart margin={{ left: 10, right: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                type="number"
+                dataKey="x"
+                name="Tempo Casa"
+                tick={{ fontSize: 11 }}
+                label={{ value: '', position: 'bottom' }}
+              />
+              <YAxis
+                type="number"
+                dataKey="y"
+                name="Valor"
+                tick={{ fontSize: 10 }}
+                tickFormatter={v => formatCurrency(v, true)}
+              />
+              <Tooltip content={<ScatterTooltip />} />
+              <Scatter data={scatterData} fill="#1e3a5f" opacity={0.7}>
+                {scatterData.map((_, i) => (
+                  <Cell key={i} fill="#1e3a5f" />
+                ))}
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Gestores com Mais Processos */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-base font-semibold text-gray-800 mb-4">Gestores com Mais Processos</h3>
+        <div className="overflow-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b border-gray-200">
+                <th className="pb-2 font-medium w-[200px]">Gestores</th>
+                <th className="pb-2 font-medium"></th>
+                <th className="pb-2 font-medium text-right">Processos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gestorData.map((g, i) => (
+                <tr key={i} className="border-b border-gray-100">
+                  <td className="py-3 text-gray-700 font-medium">{g.name}</td>
+                  <td className="py-3 px-4">
+                    <div className="relative h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="absolute left-0 top-0 h-full rounded-full"
+                        style={{
+                          width: `${(g.count / maxGestor) * 100}%`,
+                          backgroundColor: i === 0 ? '#C41E3A' : '#1e3a5f',
+                        }}
+                      />
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-white shadow"
+                        style={{
+                          left: `${(g.count / maxGestor) * 100}%`,
+                          transform: 'translate(-50%, -50%)',
+                          backgroundColor: i === 0 ? '#C41E3A' : '#1e3a5f',
+                        }}
+                      />
+                    </div>
+                  </td>
+                  <td className="py-3 text-right text-gray-700 font-semibold tabular-nums">
+                    {String(g.count).padStart(2, '0')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
