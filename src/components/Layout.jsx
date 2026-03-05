@@ -12,7 +12,7 @@ export default function Layout() {
 
   return (
     <FilterContext.Provider value={{ processos: filtered, allProcessos: processos, loading, error, refetch, filters, setFilter, clearFilters, options }}>
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #EBEBEB 0%, #FFFFFF 30%, #FFFFFF 70%, #D7D7D7 100%)' }}>
         <Navbar
           filtersOpen={filtersOpen}
           onToggleFilters={() => setFiltersOpen(prev => !prev)}

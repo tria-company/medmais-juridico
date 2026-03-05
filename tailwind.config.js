@@ -7,27 +7,36 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Urbanist', 'sans-serif'],
       },
       colors: {
         brand: {
-          50: '#fef2f2',
-          100: '#fee2e2',
-          200: '#fecaca',
+          50: '#fff5f2',
+          100: '#ffe8e0',
+          200: '#ffd8d8',
           300: '#fca5a5',
           400: '#f87171',
-          500: '#C41E3A',
-          600: '#A8192F',
-          700: '#8B1323',
+          500: '#B22E04',
+          600: '#9A2703',
+          700: '#7E1E00',
           800: '#6F0F1C',
           900: '#520B14',
         },
         accent: {
-          DEFAULT: '#D4532B',
-          light: '#E8734F',
-          dark: '#B8431F',
-        }
-      }
+          DEFAULT: '#B22E04',
+          light: '#C32F00',
+          dark: '#7E1E00',
+        },
+        // General colors from Figma
+        fig: {
+          red: '#FF0000',
+          yellow: '#FFCC00',
+          blue: '#0022FF',
+          green: '#149403',
+          gray: '#5B5B5B',
+          black: '#151515',
+        },
+      },
     },
   },
   plugins: [],

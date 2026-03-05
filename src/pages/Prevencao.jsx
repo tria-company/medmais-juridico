@@ -18,9 +18,9 @@ import { useFilterContext } from '../hooks/useFilters'
 import { parseCurrency, formatCurrency } from '../utils/format'
 
 // ─── Cores ───────────────────────────────────────────────
-const DEPT_COLORS = ['#C41E3A', '#D4532B', '#E8734F', '#F59E0B', '#16a34a', '#2563eb', '#7c3aed', '#8B1A1A', '#0d9488', '#6366f1']
-const CARGO_BLUES = ['#1e3a5f', '#264b7a', '#2e5d94', '#3b72ad', '#4a8ac4', '#5a9bd5', '#6daedd', '#7bb8e8', '#90c5ec', '#a5d2f0']
-const DESLIG_COLORS = ['#C41E3A', '#374151', '#2563eb', '#16a34a', '#a855f7']
+const DEPT_COLORS = ['#7E1E00', '#C32F00', '#FF3E00', '#C0A139', '#015100', '#294C99', '#3A0051', '#BD2D00', '#03B700', '#457FFF']
+const CARGO_BLUES = ['#170C80', '#1e2080', '#252e90', '#294C99', '#3560ab', '#4C7DC5', '#457FFF', '#5a8fd5', '#6da0e0', '#80b0ea']
+const DESLIG_COLORS = ['#C32F00', '#5B5B5B', '#294C99', '#03B700', '#8300B7']
 
 // ─── Custom Tooltip ──────────────────────────────────────
 function BarTooltip({ active, payload }) {
@@ -65,7 +65,7 @@ export default function Prevencao() {
 
     const temposCasa = processos
       .map(p => {
-        const tc = p.tempo_casa
+        const tc = p.tempo_casa_meses
         if (!tc) return null
         const num = parseFloat(String(tc).replace(/[^\d.,]/g, '').replace(',', '.'))
         return isNaN(num) ? null : num
@@ -76,7 +76,7 @@ export default function Prevencao() {
       : 0
 
     const departamentos = new Set(
-      processos.map(p => p.departamento).filter(Boolean)
+      processos.map(p => p.departamento_reclamante).filter(Boolean)
     ).size
 
     return { reclamantes, tempoMedio, departamentos }
@@ -87,7 +87,7 @@ export default function Prevencao() {
     if (!processos.length) return []
     const map = {}
     processos.forEach(p => {
-      const dept = p.departamento || 'NÃO INFORMADO'
+      const dept = p.departamento_reclamante || 'NÃO INFORMADO'
       map[dept] = (map[dept] || 0) + 1
     })
     return Object.entries(map)
@@ -130,7 +130,7 @@ export default function Prevencao() {
     if (!processos.length) return []
     return processos
       .map(p => {
-        const tc = p.tempo_casa
+        const tc = p.tempo_casa_meses
         if (!tc) return null
         const meses = parseFloat(String(tc).replace(/[^\d.,]/g, '').replace(',', '.'))
         if (isNaN(meses)) return null
@@ -321,9 +321,9 @@ export default function Prevencao() {
                 tickFormatter={v => formatCurrency(v, true)}
               />
               <Tooltip content={<ScatterTooltip />} />
-              <Scatter data={scatterData} fill="#1e3a5f" opacity={0.7}>
+              <Scatter data={scatterData} fill="#170C80" opacity={0.7}>
                 {scatterData.map((_, i) => (
-                  <Cell key={i} fill="#1e3a5f" />
+                  <Cell key={i} fill="#170C80" />
                 ))}
               </Scatter>
             </ScatterChart>
@@ -353,7 +353,7 @@ export default function Prevencao() {
                         className="absolute left-0 top-0 h-full rounded-full"
                         style={{
                           width: `${(g.count / maxGestor) * 100}%`,
-                          backgroundColor: i === 0 ? '#C41E3A' : '#1e3a5f',
+                          backgroundColor: i === 0 ? '#C32F00' : '#170C80',
                         }}
                       />
                       <div
@@ -361,7 +361,7 @@ export default function Prevencao() {
                         style={{
                           left: `${(g.count / maxGestor) * 100}%`,
                           transform: 'translate(-50%, -50%)',
-                          backgroundColor: i === 0 ? '#C41E3A' : '#1e3a5f',
+                          backgroundColor: i === 0 ? '#C32F00' : '#170C80',
                         }}
                       />
                     </div>

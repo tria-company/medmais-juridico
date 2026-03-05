@@ -16,8 +16,8 @@ import { useFilterContext } from '../hooks/useFilters'
 import { parseCurrency, formatCurrency, parseDate, getMonthYear } from '../utils/format'
 
 // ─── Cores ───────────────────────────────────────────────
-const BLUES = ['#1e3a5f', '#264b7a', '#2e5d94', '#3b72ad', '#4a8ac4', '#5a9bd5', '#6daedd', '#7bb8e8', '#90c5ec', '#a5d2f0', '#b8def4', '#cceaff']
-const REDS = ['#8B1A1A', '#A02020', '#B52828', '#C41E3A', '#D4532B', '#D96040', '#E07050', '#E88060', '#EF9070', '#F5A080', '#F8B090', '#FBC0A0']
+const BLUES = ['#170C80', '#1e2080', '#252e90', '#294C99', '#3560ab', '#4C7DC5', '#457FFF', '#5a8fd5', '#6da0e0', '#80b0ea', '#93c0f0', '#a6d0f8']
+const REDS = ['#7E1E00', '#8B2500', '#9A2B00', '#AA3200', '#BD2D00', '#C32F00', '#D44020', '#E05030', '#EC6040', '#F57050', '#FF8060', '#FF9070']
 
 // ─── Custom Tooltip ──────────────────────────────────────
 function BarTooltip({ active, payload }) {
@@ -52,23 +52,52 @@ function AreaTooltip({ active, payload, label }) {
   )
 }
 
+// ─── Parser de pedidos_verbas ─────────────────────────────
+function parsePedidosVerbas(text) {
+  if (!text) return []
+  const blocks = text.split(/(?=tipo verba:)/gi).filter(b => b.trim())
+  return blocks.map(block => {
+    const fields = {}
+    const parts = block.split('|').map(s => s.trim())
+    parts.forEach(part => {
+      const colonIdx = part.indexOf(':')
+      if (colonIdx > 0) {
+        const key = part.substring(0, colonIdx).trim().toLowerCase()
+        const value = part.substring(colonIdx + 1).trim()
+        fields[key] = value
+      }
+    })
+    return fields
+  })
+}
+
+function parseValor(v) {
+  if (!v || v === 'informacao nao disponivel') return 0
+  return parseCurrency(v)
+}
+
 // ─── Componente principal ────────────────────────────────
 export default function RankingVerbas() {
   const { processos, loading, error } = useFilterContext()
 
-  // Agregar verbas
+  // Agregar verbas a partir de pedidos_verbas
   const verbaData = useMemo(() => {
     if (!processos.length) return []
     const map = {}
     processos.forEach(p => {
-      const verba = p.tipo_verba || p.natureza || p.materia || 'Não Informada'
-      if (!map[verba]) map[verba] = { name: verba, count: 0, value: 0, deferida: 0, valorDeferido: 0 }
-      map[verba].count++
-      map[verba].value += parseCurrency(p.valor_causa_original)
-      if (p.status_processo?.toLowerCase()?.includes('encerrado') || p.status_processo?.toLowerCase()?.includes('acordo')) {
-        map[verba].deferida++
-        map[verba].valorDeferido += parseCurrency(p.valor_total_condenacao)
-      }
+      const verbas = parsePedidosVerbas(p.pedidos_verbas)
+      if (!verbas.length) return
+      verbas.forEach(v => {
+        const nome = v['tipo verba'] || 'Não Informada'
+        if (!map[nome]) map[nome] = { name: nome, count: 0, value: 0, deferida: 0, valorDeferido: 0 }
+        map[nome].count++
+        map[nome].value += parseValor(v['valor pedido'])
+        const status = (v['status pedido'] || '').toLowerCase()
+        if (status.includes('deferido') && !status.includes('indeferido')) {
+          map[nome].deferida++
+          map[nome].valorDeferido += parseValor(v['valor deferido sentenca']) + parseValor(v['valor deferido acordao'])
+        }
+      })
     })
     return Object.values(map).sort((a, b) => b.count - a.count)
   }, [processos])
@@ -198,8 +227,8 @@ export default function RankingVerbas() {
           <AreaChart data={monthlyData} margin={{ left: 0, right: 10 }}>
             <defs>
               <linearGradient id="gradProcessos" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#6366f1" stopOpacity={0.05} />
+                <stop offset="5%" stopColor="#170C80" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#170C80" stopOpacity={0.05} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" />
@@ -209,7 +238,7 @@ export default function RankingVerbas() {
             <Area
               type="monotone"
               dataKey="Processos"
-              stroke="#6366f1"
+              stroke="#170C80"
               fill="url(#gradProcessos)"
               strokeWidth={2.5}
             />
@@ -219,10 +248,10 @@ export default function RankingVerbas() {
 
       {/* Tabela de Verbas */}
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-base font-semibold text-gray-800 mb-4">Processos por Valor Atualizado</h3>
-        <div className="overflow-auto">
+        <h3 className="text-base font-semibold text-gray-800 mb-4">Ranking de Verbas</h3>
+        <div className="overflow-auto max-h-[400px]">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 bg-white z-10">
               <tr className="text-left text-gray-500 border-b border-gray-200">
                 <th className="pb-3 font-medium">Verba</th>
                 <th className="pb-3 font-medium text-center">Qtd Pedida</th>

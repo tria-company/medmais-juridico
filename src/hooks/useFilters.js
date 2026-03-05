@@ -36,7 +36,7 @@ export function useFilters(processos) {
       filiais: unique('filial_unidade_processo'),
       departamentos: unique('departamento'),
       riscos: unique('classificacao_risco'),
-      fases: unique('fase_atual'),
+      fases: unique('fase_processual_atual'),
       status: unique('status_processo'),
       desligamentos: unique('tipo_desligamento'),
     }
@@ -48,7 +48,7 @@ export function useFilters(processos) {
       if (filters.filial && p.filial_unidade_processo !== filters.filial) return false
       if (filters.departamento && p.departamento !== filters.departamento) return false
       if (filters.risco && p.classificacao_risco !== filters.risco) return false
-      if (filters.fase && p.fase_atual !== filters.fase) return false
+      if (filters.fase && p.fase_processual_atual !== filters.fase) return false
       if (filters.status && p.status_processo !== filters.status) return false
       if (filters.desligamento && p.tipo_desligamento !== filters.desligamento) return false
       return true

@@ -27,19 +27,21 @@ import { parseCurrency, formatCurrency, formatNumber, parseDate, getMonthYear } 
 
 // ─── Cores ───────────────────────────────────────────────
 const RISK_COLORS = {
-  'Possível': '#8B1A1A',
-  'Provável': '#C41E3A',
-  'Remoto': '#16a34a',
+  'Possível': '#7E1E00',
+  'Provável': '#FF3E00',
+  'Remoto': '#03B700',
+  'Não Informado': '#D7D7D7',
+  'informacao nao disponivel': '#D7D7D7',
 }
 
 const STATUS_COLORS = {
-  'Ativo': '#8B1A1A',
-  'Arquivado': '#C41E3A',
-  'Encerrado-Acordo': '#D4532B',
-  'Suspenso': '#E8734F',
+  'Ativo': '#7E1E00',
+  'Arquivado': '#BD2D00',
+  'Encerrado-Acordo': '#FF3E00',
+  'Suspenso': '#FFAF96',
 }
 
-const BRANCH_BLUES = ['#1e3a5f', '#264b7a', '#2e5d94', '#3b72ad', '#5a9bd5', '#7bb8e8']
+const BRANCH_BLUES = ['#170C80', '#1e2a8f', '#294C99', '#3560ab', '#4C7DC5', '#457FFF']
 
 // ─── KPI Card ────────────────────────────────────────────
 function KPICard({ icon: Icon, iconBg, label, value, subtitle }) {
@@ -284,7 +286,7 @@ export default function VisaoExecutiva() {
                   {riskData.map((entry) => (
                     <Cell
                       key={entry.name}
-                      fill={RISK_COLORS[entry.name] || '#94a3b8'}
+                      fill={RISK_COLORS[entry.name] || '#D7D7D7'}
                     />
                   ))}
                 </Pie>
@@ -306,7 +308,7 @@ export default function VisaoExecutiva() {
                 <div key={entry.name} className="flex items-center gap-2 text-sm">
                   <span
                     className="w-3 h-3 rounded-full shrink-0"
-                    style={{ backgroundColor: RISK_COLORS[entry.name] || '#94a3b8' }}
+                    style={{ backgroundColor: RISK_COLORS[entry.name] || '#D7D7D7' }}
                   />
                   <span className="text-gray-700 font-medium">{entry.name}</span>
                   <span className="text-gray-500">- {entry.count}</span>
@@ -359,12 +361,12 @@ export default function VisaoExecutiva() {
             <AreaChart data={monthlyData} margin={{ left: 0, right: 10 }}>
               <defs>
                 <linearGradient id="gradNovos" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#1e3a5f" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#1e3a5f" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#170C80" stopOpacity={0.75} />
+                  <stop offset="95%" stopColor="#170C80" stopOpacity={0.05} />
                 </linearGradient>
                 <linearGradient id="gradEncerrados" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#5a9bd5" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#5a9bd5" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#4977C2" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#4977C2" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" />
@@ -380,14 +382,14 @@ export default function VisaoExecutiva() {
               <Area
                 type="monotone"
                 dataKey="Novos"
-                stroke="#1e3a5f"
+                stroke="#170C80"
                 fill="url(#gradNovos)"
-                strokeWidth={2}
+                strokeWidth={2.5}
               />
               <Area
                 type="monotone"
                 dataKey="Encerrados"
-                stroke="#5a9bd5"
+                stroke="#4977C2"
                 fill="url(#gradEncerrados)"
                 strokeWidth={2}
               />
@@ -408,7 +410,7 @@ export default function VisaoExecutiva() {
                 {statusData.map((entry, i) => (
                   <Cell
                     key={entry.name}
-                    fill={STATUS_COLORS[entry.name] || '#94a3b8'}
+                    fill={STATUS_COLORS[entry.name] || '#D7D7D7'}
                   />
                 ))}
               </Bar>

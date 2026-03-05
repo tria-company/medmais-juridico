@@ -1,5 +1,5 @@
-import { useState, useMemo, Fragment } from 'react'
-import { Search, ChevronDown, ChevronRight, Loader2, AlertTriangle, Download } from 'lucide-react'
+import { useState, useMemo, useRef, useEffect, Fragment } from 'react'
+import { Search, X, ChevronDown, ChevronRight, Loader2, AlertTriangle, Download } from 'lucide-react'
 import { useFilterContext } from '../hooks/useFilters'
 import { parseCurrency, formatCurrency } from '../utils/format'
 
@@ -26,19 +26,107 @@ function InfoRow({ label, value }) {
   )
 }
 
-// ─── Filter Select (local) ──────────────────────────────
-function LocalFilter({ label, value, options, onChange }) {
+// ─── Search Box com autocomplete ─────────────────────────
+function ProcessoSearchBox({ processos, search, onSearch }) {
+  const [open, setOpen] = useState(false)
+  const [highlightIdx, setHighlightIdx] = useState(-1)
+  const ref = useRef(null)
+  const listRef = useRef(null)
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const results = useMemo(() => {
+    if (!search.trim()) return []
+    const q = search.toLowerCase()
+    return processos.filter(p =>
+      (p.numero_processo || '').toLowerCase().includes(q) ||
+      (p.nome_reclamante || '').toLowerCase().includes(q) ||
+      (p.parte_contraria || '').toLowerCase().includes(q) ||
+      (p.filial_unidade_processo || '').toLowerCase().includes(q)
+    ).slice(0, 15)
+  }, [search, processos])
+
+  useEffect(() => { setHighlightIdx(-1) }, [results])
+
+  useEffect(() => {
+    if (highlightIdx < 0 || !listRef.current) return
+    const items = listRef.current.querySelectorAll('[data-item]')
+    if (items[highlightIdx]) items[highlightIdx].scrollIntoView({ block: 'nearest' })
+  }, [highlightIdx])
+
+  const handleKeyDown = (e) => {
+    if (!open || !results.length) return
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setHighlightIdx(prev => Math.min(prev + 1, results.length - 1))
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setHighlightIdx(prev => Math.max(prev - 1, 0))
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (highlightIdx >= 0 && results[highlightIdx]) {
+          const p = results[highlightIdx]
+          onSearch(p.numero_processo || p.nome_reclamante || '')
+          setOpen(false)
+        }
+        break
+      case 'Escape':
+        setOpen(false)
+        setHighlightIdx(-1)
+        break
+    }
+  }
+
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="appearance-none bg-white border border-gray-300 rounded-full px-3 py-1.5 pr-7 text-xs text-gray-600 cursor-pointer hover:border-gray-400 focus:outline-none focus:border-brand-500 transition-colors"
-      >
-        <option value="">{label}</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+    <div ref={ref} className="relative flex-1">
+      <div className="relative">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Buscar por número do processo, reclamante ou filial..."
+          value={search}
+          onChange={(e) => { onSearch(e.target.value); setOpen(true) }}
+          onFocus={() => { if (search) setOpen(true) }}
+          onKeyDown={handleKeyDown}
+          className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:border-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors"
+        />
+        {search && (
+          <button
+            onClick={() => { onSearch(''); setOpen(false) }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+      {open && results.length > 0 && (
+        <div ref={listRef} className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-auto">
+          {results.map((p, i) => (
+            <button
+              key={p.id}
+              data-item
+              onClick={() => { onSearch(p.numero_processo || p.nome_reclamante || ''); setOpen(false) }}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b border-gray-50 ${
+                i === highlightIdx ? 'bg-brand-500/10 text-brand-500' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span className="font-mono text-xs">{p.numero_processo || `#${p.id}`}</span>
+              {(p.nome_reclamante || p.parte_contraria) && (
+                <span className="text-gray-400 ml-2">— {p.nome_reclamante || p.parte_contraria}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -53,9 +141,9 @@ function ProcessDetail({ p }) {
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
             <h4 className="text-sm font-semibold text-gray-800 mb-2">Reclamante</h4>
             <InfoRow label="Cargo" value={p.cargo_reclamante || p.cargo} />
-            <InfoRow label="Depto" value={p.departamento} />
+            <InfoRow label="Depto" value={p.departamento_reclamante} />
             <InfoRow label="Desligamento" value={p.tipo_desligamento} />
-            <InfoRow label="Motivo Principal" value={p.materia || p.natureza} />
+            <InfoRow label="Motivo Principal" value={p.motivo_principal_reclamacao} />
           </div>
 
           {/* Pedidos */}
@@ -80,7 +168,7 @@ function ProcessDetail({ p }) {
             <h4 className="text-sm font-semibold text-gray-800 mb-2">Risco</h4>
             <InfoRow label="Classificação" value={p.classificacao_risco} />
             <InfoRow label="Provisionado" value={formatCurrency(parseCurrency(p.valor_provisionado))} />
-            <InfoRow label="Recomendação" value={p.recomendacao} />
+            <InfoRow label="Recomendação" value={p.recomendacao_estrategica} />
           </div>
 
           {/* Atualização Financeira */}
@@ -124,50 +212,20 @@ export default function Detalhamento() {
   const { processos, loading, error } = useFilterContext()
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState(null)
-  const [localFilters, setLocalFilters] = useState({
-    filial: '',
-    departamento: '',
-    risco: '',
-    fase: '',
-    status: '',
-    desligamento: '',
-  })
 
-  // Opções únicas para filtros locais
-  const localOptions = useMemo(() => {
-    if (!processos.length) return {}
-    const unique = (key) => [...new Set(processos.map(p => p[key]).filter(Boolean))].sort()
-    return {
-      filiais: unique('filial_unidade_processo'),
-      departamentos: unique('departamento'),
-      riscos: unique('classificacao_risco'),
-      fases: unique('fase_atual'),
-      status: unique('status_processo'),
-      desligamentos: unique('tipo_desligamento'),
-    }
-  }, [processos])
-
-  // Filtrar + buscar
+  // Filtrar por busca textual
   const filtered = useMemo(() => {
+    if (!search) return processos
+    const s = search.toLowerCase()
     return processos.filter(p => {
-      if (localFilters.filial && p.filial_unidade_processo !== localFilters.filial) return false
-      if (localFilters.departamento && p.departamento !== localFilters.departamento) return false
-      if (localFilters.risco && p.classificacao_risco !== localFilters.risco) return false
-      if (localFilters.fase && p.fase_atual !== localFilters.fase) return false
-      if (localFilters.status && p.status_processo !== localFilters.status) return false
-      if (localFilters.desligamento && p.tipo_desligamento !== localFilters.desligamento) return false
-      if (search) {
-        const s = search.toLowerCase()
-        const match =
-          (p.numero_processo || '').toLowerCase().includes(s) ||
-          (p.nome_reclamante || '').toLowerCase().includes(s) ||
-          (p.parte_contraria || '').toLowerCase().includes(s) ||
-          (p.filial_unidade_processo || '').toLowerCase().includes(s)
-        if (!match) return false
-      }
-      return true
+      return (
+        (p.numero_processo || '').toLowerCase().includes(s) ||
+        (p.nome_reclamante || '').toLowerCase().includes(s) ||
+        (p.parte_contraria || '').toLowerCase().includes(s) ||
+        (p.filial_unidade_processo || '').toLowerCase().includes(s)
+      )
     })
-  }, [processos, localFilters, search])
+  }, [processos, search])
 
   // Export CSV
   const exportCSV = () => {
@@ -176,7 +234,7 @@ export default function Detalhamento() {
       p.numero_processo || '',
       p.nome_reclamante || p.parte_contraria || '',
       p.filial_unidade_processo || '',
-      p.fase_atual || '',
+      p.fase_processual_atual || '',
       p.status_processo || '',
       parseCurrency(p.valor_causa_original),
       p.classificacao_risco || '',
@@ -190,8 +248,6 @@ export default function Detalhamento() {
     a.click()
     URL.revokeObjectURL(url)
   }
-
-  const setLocal = (key, value) => setLocalFilters(prev => ({ ...prev, [key]: value }))
 
   // ─── Loading & Error ───────────────────────────────────
   if (loading) {
@@ -216,36 +272,20 @@ export default function Detalhamento() {
 
   return (
     <div className="space-y-4">
-      {/* Search + Local Filters */}
+      {/* Search + Count + Export */}
       <div className="bg-white rounded-xl shadow-sm p-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Search */}
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs w-[160px] focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors"
-            />
+        <div className="flex items-center gap-4">
+          <ProcessoSearchBox processos={processos} search={search} onSearch={setSearch} />
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-xs text-gray-400 whitespace-nowrap">{filtered.length} processo(s)</span>
+            <button
+              onClick={exportCSV}
+              className="flex items-center gap-1.5 bg-brand-500 text-white text-xs font-medium px-4 py-2 rounded-lg hover:bg-brand-600 transition-colors whitespace-nowrap"
+            >
+              <Download size={14} />
+              Exportar CSV
+            </button>
           </div>
-          <LocalFilter label="Todas Filiais" value={localFilters.filial} options={localOptions.filiais || []} onChange={v => setLocal('filial', v)} />
-          <LocalFilter label="Todos Deptos" value={localFilters.departamento} options={localOptions.departamentos || []} onChange={v => setLocal('departamento', v)} />
-          <LocalFilter label="Todos Riscos" value={localFilters.risco} options={localOptions.riscos || []} onChange={v => setLocal('risco', v)} />
-          <LocalFilter label="Todas Fases" value={localFilters.fase} options={localOptions.fases || []} onChange={v => setLocal('fase', v)} />
-          <LocalFilter label="Todos Status" value={localFilters.status} options={localOptions.status || []} onChange={v => setLocal('status', v)} />
-          <LocalFilter label="Todos Desligamentos" value={localFilters.desligamento} options={localOptions.desligamentos || []} onChange={v => setLocal('desligamento', v)} />
-        </div>
-        <div className="flex items-center justify-end mt-3 gap-3">
-          <span className="text-xs text-gray-400">{filtered.length} processo(s) encontrado(s)</span>
-          <button
-            onClick={exportCSV}
-            className="flex items-center gap-1.5 bg-brand-500 text-white text-xs font-medium px-4 py-2 rounded-lg hover:bg-brand-600 transition-colors"
-          >
-            <Download size={14} />
-            Exportar CSV
-          </button>
         </div>
       </div>
 
@@ -284,7 +324,7 @@ export default function Detalhamento() {
                       <td className="py-3 text-gray-700 text-xs font-mono">{p.numero_processo || '-'}</td>
                       <td className="py-3 text-gray-700 text-xs">{p.nome_reclamante || p.parte_contraria || '-'}</td>
                       <td className="py-3 text-gray-600 text-xs">{p.filial_unidade_processo || '-'}</td>
-                      <td className="py-3 text-gray-600 text-xs">{p.fase_atual || '-'}</td>
+                      <td className="py-3 text-gray-600 text-xs">{p.fase_processual_atual || '-'}</td>
                       <td className={`py-3 text-xs font-medium ${STATUS_COLOR[p.status_processo] || 'text-gray-600'}`}>
                         {p.status_processo || '-'}
                       </td>

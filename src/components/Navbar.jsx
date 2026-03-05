@@ -25,10 +25,10 @@ export default function Navbar({ filtersOpen, onToggleFilters }) {
         {/* Logo */}
         <div className="flex flex-col leading-none shrink-0">
           <div className="flex items-baseline">
-            <span className="text-3xl font-extrabold text-accent">med</span>
-            <span className="text-3xl font-extrabold text-accent leading-none">+</span>
+            <span className="text-3xl font-extrabold leading-none" style={{ color: '#FF5500' }}>med</span>
+            <span className="text-3xl font-extrabold leading-none" style={{ color: '#FF5500' }}>+</span>
           </div>
-          <span className="text-[11px] text-accent font-semibold tracking-wide ml-0.5">Group</span>
+          <span className="text-[11px] font-semibold tracking-wide ml-0.5" style={{ color: '#FF5500' }}>Group</span>
         </div>
 
         {/* Navigation */}
@@ -41,7 +41,7 @@ export default function Navbar({ filtersOpen, onToggleFilters }) {
                 `flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                   isActive
                     ? 'bg-accent text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    : 'text-fig-black hover:bg-gray-100'
                 }`
               }
             >
@@ -57,15 +57,12 @@ export default function Navbar({ filtersOpen, onToggleFilters }) {
             onClick={onToggleFilters}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               filtersOpen
-                ? 'bg-brand-500 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
+                ? 'bg-brand-200 text-brand-500'
+                : 'text-brand-500 hover:bg-brand-200/50'
             }`}
           >
             <Filter size={16} />
             Filtros
-          </button>
-          <button className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">
-            Novo Upload
           </button>
         </div>
       </div>

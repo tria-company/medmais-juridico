@@ -233,9 +233,9 @@ export default function AnaliseFinanceira() {
                 iconType="square"
                 wrapperStyle={{ fontSize: 12 }}
               />
-              <Bar dataKey="pedido" name="Pedido" fill="#8B1A1A" radius={[2, 2, 0, 0]} barSize={16} />
-              <Bar dataKey="condenado" name="Condenado" fill="#D4532B" radius={[2, 2, 0, 0]} barSize={16} />
-              <Bar dataKey="acordo" name="Acordo" fill="#E8734F" radius={[2, 2, 0, 0]} barSize={16} />
+              <Bar dataKey="pedido" name="Pedido" fill="#7E1E00" radius={[2, 2, 0, 0]} barSize={16} />
+              <Bar dataKey="condenado" name="Condenado" fill="#BD2D00" radius={[2, 2, 0, 0]} barSize={16} />
+              <Bar dataKey="acordo" name="Acordo" fill="#FF3E00" radius={[2, 2, 0, 0]} barSize={16} />
             </BarChart>
           </ResponsiveContainer>
         </div>
