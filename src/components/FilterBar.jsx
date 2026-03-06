@@ -65,6 +65,12 @@ export default function FilterBar({ filters, options, onFilterChange, visible })
             onChange={(v) => onFilterChange('desligamento', v)}
           />
           <FilterSelect
+            label="Todos Tribunais"
+            value={filters.tribunal}
+            options={options.tribunais || []}
+            onChange={(v) => onFilterChange('tribunal', v)}
+          />
+          <FilterSelect
             label="Período"
             value={filters.periodo}
             options={[]}

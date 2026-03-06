@@ -16,6 +16,7 @@ export function useFilters(processos) {
     fase: '',
     status: '',
     desligamento: '',
+    tribunal: '',
     periodo: '',
   })
 
@@ -39,6 +40,7 @@ export function useFilters(processos) {
       fases: unique('fase_processual_atual'),
       status: unique('status_processo'),
       desligamentos: unique('tipo_desligamento'),
+      tribunais: unique('tribunal'),
     }
   }, [processos])
 
@@ -51,6 +53,7 @@ export function useFilters(processos) {
       if (filters.fase && p.fase_processual_atual !== filters.fase) return false
       if (filters.status && p.status_processo !== filters.status) return false
       if (filters.desligamento && p.tipo_desligamento !== filters.desligamento) return false
+      if (filters.tribunal && p.tribunal !== filters.tribunal) return false
       return true
     })
   }, [processos, filters])
@@ -67,6 +70,7 @@ export function useFilters(processos) {
       fase: '',
       status: '',
       desligamento: '',
+      tribunal: '',
       periodo: '',
     })
   }
