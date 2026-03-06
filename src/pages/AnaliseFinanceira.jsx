@@ -57,7 +57,7 @@ export default function AnaliseFinanceira() {
       (sum, p) => sum + parseCurrency(p.valor_total_condenacao), 0
     )
     const totalAcordo = processos.reduce(
-      (sum, p) => sum + parseCurrency(p.valor_acordo), 0
+      (sum, p) => sum + parseCurrency(p.valor_acordo_pos_sentenca), 0
     )
     const economiaAcordos = totalAcordo - totalCondenado
     const pctReducao = totalCondenado > 0
@@ -102,7 +102,7 @@ export default function AnaliseFinanceira() {
       if (!map[filial]) map[filial] = { name: filial, pedido: 0, condenado: 0, acordo: 0 }
       map[filial].pedido += parseCurrency(p.valor_causa_original)
       map[filial].condenado += parseCurrency(p.valor_total_condenacao)
-      map[filial].acordo += parseCurrency(p.valor_acordo)
+      map[filial].acordo += parseCurrency(p.valor_acordo_pos_sentenca)
     })
     return Object.values(map).sort((a, b) => b.pedido - a.pedido).slice(0, 8)
   }, [processos])

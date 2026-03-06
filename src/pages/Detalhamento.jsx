@@ -152,7 +152,7 @@ function ProcessDetail({ p }) {
             <InfoRow label="Valor Causa" value={formatCurrency(parseCurrency(p.valor_causa_original))} />
             <InfoRow label="Provisionado" value={formatCurrency(parseCurrency(p.valor_provisionado))} />
             <InfoRow label="Condenação" value={formatCurrency(parseCurrency(p.valor_total_condenacao))} />
-            <InfoRow label="Acordo" value={formatCurrency(parseCurrency(p.valor_acordo))} />
+            <InfoRow label="Acordo" value={formatCurrency(parseCurrency(p.valor_acordo_pos_sentenca))} />
           </div>
 
           {/* Sentença */}

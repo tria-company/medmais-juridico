@@ -3,7 +3,7 @@
  * Aceita formatos: "R$ 1.234,56", "1.234,56", "1234.56", "1234", etc.
  */
 export function parseCurrency(value) {
-  if (!value || value === '-' || value === 'N/A') return 0
+  if (!value || value === '-' || value === 'N/A' || value === 'informacao nao disponivel') return 0
   const cleaned = String(value)
     .replace(/R\$\s*/g, '')
     .replace(/\s/g, '')
