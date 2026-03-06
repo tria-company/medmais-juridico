@@ -18,17 +18,30 @@ const navItems = [
   { path: '/detalhamento', label: 'Detalhamento', icon: FileText },
 ]
 
-export default function Navbar({ filtersOpen, onToggleFilters }) {
+export default function Navbar({ filtersOpen, onToggleFilters, totalProcessos, filteredCount }) {
+  const hasFilter = totalProcessos !== filteredCount
+
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-[1280px] mx-auto px-6 flex items-center justify-between h-16">
-        {/* Logo */}
-        <div className="flex flex-col leading-none shrink-0">
-          <div className="flex items-baseline">
-            <span className="text-3xl font-extrabold leading-none" style={{ color: '#FF5500' }}>med</span>
-            <span className="text-3xl font-extrabold leading-none" style={{ color: '#FF5500' }}>+</span>
+        {/* Logo + Total */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-col leading-none">
+            <div className="flex items-baseline">
+              <span className="text-3xl font-extrabold leading-none" style={{ color: '#FF5500' }}>med</span>
+              <span className="text-3xl font-extrabold leading-none" style={{ color: '#FF5500' }}>+</span>
+            </div>
+            <span className="text-[11px] font-semibold tracking-wide ml-0.5" style={{ color: '#FF5500' }}>Group</span>
           </div>
-          <span className="text-[11px] font-semibold tracking-wide ml-0.5" style={{ color: '#FF5500' }}>Group</span>
+          <div className="flex items-center gap-1.5 bg-gray-100 rounded-full px-3 py-1">
+            <span className="text-xs font-semibold text-gray-500">Processos</span>
+            <span className="bg-accent text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[24px] text-center">
+              {hasFilter ? filteredCount : totalProcessos}
+            </span>
+            {hasFilter && (
+              <span className="text-[10px] text-gray-400">/ {totalProcessos}</span>
+            )}
+          </div>
         </div>
 
         {/* Navigation */}

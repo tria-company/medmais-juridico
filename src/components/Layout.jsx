@@ -16,6 +16,8 @@ export default function Layout() {
         <Navbar
           filtersOpen={filtersOpen}
           onToggleFilters={() => setFiltersOpen(prev => !prev)}
+          totalProcessos={processos.length}
+          filteredCount={filtered.length}
         />
         <FilterBar
           filters={filters}
