@@ -101,7 +101,7 @@ export default function VisaoExecutiva() {
     )
 
     const passivoTotal = processos.reduce(
-      (sum, p) => sum + parseCurrency(p.valor_provisionado), 0
+      (sum, p) => sum + parseCurrency(p.valor_causa_original), 0
     )
     const totalPedido = processos.reduce(
       (sum, p) => sum + parseCurrency(p.valor_causa_original), 0
@@ -110,7 +110,7 @@ export default function VisaoExecutiva() {
       (sum, p) => sum + parseCurrency(p.valor_total_condenacao), 0
     )
     const riscoProvavelValor = provaveis.reduce(
-      (sum, p) => sum + parseCurrency(p.valor_provisionado), 0
+      (sum, p) => sum + parseCurrency(p.valor_causa_original), 0
     )
     const ticketMedio = ativos.length > 0 ? totalPedido / ativos.length : 0
 
@@ -133,7 +133,7 @@ export default function VisaoExecutiva() {
       const risco = p.classificacao_risco || 'Não Informado'
       if (!map[risco]) map[risco] = { name: risco, count: 0, value: 0 }
       map[risco].count++
-      map[risco].value += parseCurrency(p.valor_provisionado)
+      map[risco].value += parseCurrency(p.valor_causa_original)
     })
     return Object.values(map).sort((a, b) => b.count - a.count)
   }, [processos])
@@ -145,7 +145,7 @@ export default function VisaoExecutiva() {
     processos.forEach(p => {
       const filial = p.filial_unidade_processo || 'Não Informada'
       if (!map[filial]) map[filial] = { name: filial, passivo: 0 }
-      map[filial].passivo += parseCurrency(p.valor_provisionado)
+      map[filial].passivo += parseCurrency(p.valor_causa_original)
     })
     return Object.values(map).sort((a, b) => b.passivo - a.passivo).slice(0, 6)
   }, [processos])
