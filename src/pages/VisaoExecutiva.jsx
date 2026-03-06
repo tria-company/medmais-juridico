@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Building2,
   DollarSign,
@@ -6,6 +6,7 @@ import {
   BarChart3,
   AlertTriangle,
   Loader2,
+  Info,
 } from 'lucide-react'
 import {
   PieChart,
@@ -27,11 +28,22 @@ import { parseCurrency, formatCurrency, formatNumber, parseDate, getMonthYear } 
 
 // ─── Cores ───────────────────────────────────────────────
 const RISK_COLORS = {
-  'Possível': '#7E1E00',
-  'Provável': '#FF3E00',
-  'Remoto': '#03B700',
+  'Possível': '#F97316',
+  'Possivel': '#F97316',
+  'Provável': '#DC2626',
+  'Provavel': '#DC2626',
+  'Remoto': '#EAB308',
   'Não Informado': '#D7D7D7',
+  'Nao Informado': '#D7D7D7',
   'informacao nao disponivel': '#D7D7D7',
+}
+
+const RISK_DESCRIPTIONS = {
+  'Provável': 'Alta chance de perda (70\u201395%). Sentença condenatória transitada em julgado, revelia, pedidos com forte respaldo jurisprudencial ou acordo pendente.',
+  'Provavel': 'Alta chance de perda (70\u201395%). Sentença condenatória transitada em julgado, revelia, pedidos com forte respaldo jurisprudencial ou acordo pendente.',
+  'Possível': 'Risco moderado (30\u201369%). Processo em fase de conhecimento com pedidos que dependem de prova, ou sentença parcialmente procedente com recurso.',
+  'Possivel': 'Risco moderado (30\u201369%). Processo em fase de conhecimento com pedidos que dependem de prova, ou sentença parcialmente procedente com recurso.',
+  'Remoto': 'Baixa chance de perda (1\u201329%). Sentença improcedente, processo extinto sem mérito, reclamante ausente ou processo arquivado.',
 }
 
 const STATUS_COLORS = {
@@ -44,17 +56,65 @@ const STATUS_COLORS = {
 const BRANCH_BLUES = ['#170C80', '#1e2a8f', '#294C99', '#3560ab', '#4C7DC5', '#457FFF']
 
 // ─── KPI Card ────────────────────────────────────────────
-function KPICard({ icon: Icon, iconBg, label, value, subtitle }) {
+function KPICard({ icon: Icon, iconBg, label, value, subtitle, tooltip, source }) {
+  const [showSource, setShowSource] = useState(false)
+
   return (
-    <div className="bg-white rounded-xl shadow-sm px-5 py-4 flex items-center gap-4 min-w-0">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4 flex items-center gap-4 min-w-0 group relative cursor-default">
       <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${iconBg}`}>
         <Icon size={22} className="text-white" />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xs text-gray-500 truncate">{label}</p>
         <p className="text-xl font-bold text-gray-900 truncate">{value}</p>
         {subtitle && <p className="text-[10px] text-gray-400 truncate">{subtitle}</p>}
       </div>
+      {source && (
+        <button
+          onClick={() => setShowSource(prev => !prev)}
+          className="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
+        >
+          <Info size={14} />
+        </button>
+      )}
+      {source && showSource && (
+        <div className="absolute top-8 right-2 z-10 px-3 py-2 bg-gray-800 text-white text-[11px] rounded-lg whitespace-nowrap shadow-lg">
+          <p className="font-medium mb-0.5">Fonte do dado:</p>
+          <p className="text-gray-300">{source}</p>
+        </div>
+      )}
+      {tooltip && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          {tooltip}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Chart Card with Info ────────────────────────────────
+function ChartCard({ title, source, children, className = '' }) {
+  const [showSource, setShowSource] = useState(false)
+
+  return (
+    <div className={`bg-white rounded-xl shadow-sm p-6 relative ${className}`}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-semibold text-gray-800">{title}</h3>
+        {source && (
+          <button
+            onClick={() => setShowSource(prev => !prev)}
+            className="w-5 h-5 flex items-center justify-center rounded-full text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            <Info size={14} />
+          </button>
+        )}
+      </div>
+      {source && showSource && (
+        <div className="absolute top-12 right-4 z-10 px-3 py-2 bg-gray-800 text-white text-[11px] rounded-lg max-w-[250px] shadow-lg">
+          {source}
+        </div>
+      )}
+      {children}
     </div>
   )
 }
@@ -96,12 +156,13 @@ export default function VisaoExecutiva() {
     const ativos = processos.filter(p =>
       p.status_processo?.toLowerCase() === 'ativo'
     )
+    const normalize = (s) => s?.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || ''
     const provaveis = processos.filter(p =>
-      p.classificacao_risco?.toLowerCase() === 'provável'
+      normalize(p.classificacao_risco) === 'provavel'
     )
 
     const passivoTotal = processos.reduce(
-      (sum, p) => sum + parseCurrency(p.valor_causa_original), 0
+      (sum, p) => sum + parseCurrency(p.valor_total_condenacao), 0
     )
     const totalPedido = processos.reduce(
       (sum, p) => sum + parseCurrency(p.valor_causa_original), 0
@@ -135,7 +196,12 @@ export default function VisaoExecutiva() {
       map[risco].count++
       map[risco].value += parseCurrency(p.valor_causa_original)
     })
-    return Object.values(map).sort((a, b) => b.count - a.count)
+    const riskOrder = ['informacao nao disponivel', 'Nao Informado', 'Não Informado', 'Provavel', 'Provável', 'Possivel', 'Possível', 'Remoto']
+    return Object.values(map).sort((a, b) => {
+      const ia = riskOrder.indexOf(a.name)
+      const ib = riskOrder.indexOf(b.name)
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib)
+    })
   }, [processos])
 
   // Filiais por Passivo
@@ -148,6 +214,18 @@ export default function VisaoExecutiva() {
       map[filial].passivo += parseCurrency(p.valor_causa_original)
     })
     return Object.values(map).sort((a, b) => b.passivo - a.passivo).slice(0, 6)
+  }, [processos])
+
+  // Processos por Unidade
+  const unitData = useMemo(() => {
+    if (!processos.length) return []
+    const map = {}
+    processos.forEach(p => {
+      const unidade = p.filial_unidade_processo || 'Não Informada'
+      if (!map[unidade]) map[unidade] = { name: unidade, count: 0 }
+      map[unidade].count++
+    })
+    return Object.values(map).sort((a, b) => b.count - a.count)
   }, [processos])
 
   // Evolução Mensal de Processos
@@ -235,40 +313,47 @@ export default function VisaoExecutiva() {
           iconBg="bg-slate-700"
           label="Processos Ativos"
           value={kpis?.processosAtivos ?? 0}
-        />
-        <KPICard
-          icon={DollarSign}
-          iconBg="bg-emerald-700"
-          label="Passivo Total"
-          value={formatCurrency(kpis?.passivoTotal, true)}
+          source="Total de processos com status 'Ativo'"
         />
         <KPICard
           icon={TrendingUp}
           iconBg="bg-accent"
           label="Total Pedido"
           value={formatCurrency(kpis?.totalPedido, true)}
-          subtitle={`Condenado: ${formatCurrency(kpis?.totalCondenado)}`}
+          tooltip={formatCurrency(kpis?.totalPedido)}
+          source="Soma do valor original da causa de todos os processos"
+        />
+        <KPICard
+          icon={DollarSign}
+          iconBg="bg-emerald-700"
+          label="Passivo Total"
+          value={formatCurrency(kpis?.passivoTotal, true)}
+          tooltip={formatCurrency(kpis?.passivoTotal)}
+          source="Soma do valor total de condenação de todos os processos"
         />
         <KPICard
           icon={BarChart3}
           iconBg="bg-blue-700"
           label="Ticket Medio"
           value={formatCurrency(kpis?.ticketMedio, true)}
+          tooltip={formatCurrency(kpis?.ticketMedio)}
+          source="Valor médio da causa por processo ativo"
         />
         <KPICard
           icon={AlertTriangle}
           iconBg="bg-red-700"
           label="Risco Provavel"
-          value={`${kpis?.riscoProvavel ?? 0} proc.`}
-          subtitle={formatCurrency(kpis?.riscoProvavelValor)}
+          value={formatCurrency(kpis?.riscoProvavelValor, true)}
+          tooltip={formatCurrency(kpis?.riscoProvavelValor)}
+          subtitle={`${kpis?.riscoProvavel ?? 0} processos`}
+          source="Processos com classificação de risco 'Provável' e sua soma de valores"
         />
       </div>
 
       {/* Charts Row 1 */}
       <div className="grid grid-cols-2 gap-6">
         {/* Distribuição por Risco */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-base font-semibold text-gray-800 mb-4">Distribuicao por Risco</h3>
+        <ChartCard title="Distribuicao por Risco" source="Agrupamento por classificacao_risco com soma do valor original da causa">
           <div className="flex items-center">
             <ResponsiveContainer width="55%" height={220}>
               <PieChart>
@@ -303,24 +388,30 @@ export default function VisaoExecutiva() {
                 <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="flex flex-col gap-3 ml-2">
+            <div className="flex flex-col gap-2.5 ml-2">
               {riskData.map(entry => (
-                <div key={entry.name} className="flex items-center gap-2 text-sm">
-                  <span
-                    className="w-3 h-3 rounded-full shrink-0"
-                    style={{ backgroundColor: RISK_COLORS[entry.name] || '#D7D7D7' }}
-                  />
-                  <span className="text-gray-700 font-medium">{entry.name}</span>
-                  <span className="text-gray-500">- {entry.count}</span>
+                <div key={entry.name} className="group/legend relative">
+                  <div className="flex items-center gap-2 text-sm cursor-default">
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: RISK_COLORS[entry.name] || '#D7D7D7' }}
+                    />
+                    <span className="text-gray-700 font-medium">{entry.name}</span>
+                    <span className="text-gray-500">- {entry.count}</span>
+                  </div>
+                  {RISK_DESCRIPTIONS[entry.name] && (
+                    <div className="absolute left-0 top-full mt-1 z-20 px-3 py-2 bg-gray-800 text-white text-[11px] rounded-lg w-[260px] leading-relaxed opacity-0 group-hover/legend:opacity-100 transition-opacity pointer-events-none shadow-lg">
+                      {RISK_DESCRIPTIONS[entry.name]}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           </div>
-        </div>
+        </ChartCard>
 
         {/* Filiais por Passivo */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-base font-semibold text-gray-800 mb-1">Filiais por Passivo</h3>
+        <ChartCard title="Filiais por Passivo" source="Soma do valor original da causa agrupado por filial/unidade (top 6)">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-800" />
             <span className="text-xs text-gray-500">
@@ -349,14 +440,13 @@ export default function VisaoExecutiva() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ChartCard>
       </div>
 
       {/* Charts Row 2 */}
       <div className="grid grid-cols-2 gap-6">
         {/* Evolução Mensal */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-base font-semibold text-gray-800 mb-4">Evolucao Mensal de Processos</h3>
+        <ChartCard title="Evolucao Mensal de Processos" source="Novos: data de distribuição / Encerrados: data de encerramento, agrupados por mês">
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={monthlyData} margin={{ left: 0, right: 10 }}>
               <defs>
@@ -395,11 +485,10 @@ export default function VisaoExecutiva() {
               />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </ChartCard>
 
         {/* Status dos Processos */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-base font-semibold text-gray-800 mb-4">Status dos Processos</h3>
+        <ChartCard title="Status dos Processos" source="Contagem de processos agrupados por status (Ativo, Arquivado, Encerrado, etc.)">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={statusData} margin={{ left: 0, right: 10 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -416,8 +505,36 @@ export default function VisaoExecutiva() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ChartCard>
       </div>
+
+      {/* Processos por Unidade - Full Width */}
+      <ChartCard title="Processos por Unidade" source="Contagem de processos agrupados por filial/unidade">
+        <div className="overflow-x-auto" style={{ maxHeight: 350 }}>
+          <div style={{ minWidth: unitData.length * 70 + 60 }}>
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={unitData} margin={{ left: 0, right: 10, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 10 }}
+                  angle={-45}
+                  textAnchor="end"
+                  interval={0}
+                  height={80}
+                />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="count" name="Processos" radius={[4, 4, 0, 0]} barSize={40}>
+                  {unitData.map((_, i) => (
+                    <Cell key={i} fill={BRANCH_BLUES[i % BRANCH_BLUES.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </ChartCard>
     </div>
   )
 }
