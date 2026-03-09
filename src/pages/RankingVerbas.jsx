@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { Loader2, AlertTriangle } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, AlertTriangle, Info } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -52,23 +53,37 @@ function AreaTooltip({ active, payload, label }) {
   )
 }
 
-// ─── Parser de pedidos_verbas ─────────────────────────────
+// ─── Info Tooltip ────────────────────────────────────────
+function InfoTip({ text }) {
+  const [show, setShow] = useState(false)
+  return (
+    <span className="relative inline-flex">
+      <button
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        className="text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <Info size={14} />
+      </button>
+      {show && (
+        <div className="absolute left-0 top-full mt-2 w-64 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-50 leading-relaxed pointer-events-none">
+          {text}
+          <div className="absolute left-3 bottom-full w-0 h-0 border-x-[5px] border-x-transparent border-b-[5px] border-b-gray-800" />
+        </div>
+      )}
+    </span>
+  )
+}
+
+// ─── Parser de pedidos_verbas (JSON) ─────────────────────
 function parsePedidosVerbas(text) {
   if (!text) return []
-  const blocks = text.split(/(?=tipo verba:)/gi).filter(b => b.trim())
-  return blocks.map(block => {
-    const fields = {}
-    const parts = block.split('|').map(s => s.trim())
-    parts.forEach(part => {
-      const colonIdx = part.indexOf(':')
-      if (colonIdx > 0) {
-        const key = part.substring(0, colonIdx).trim().toLowerCase()
-        const value = part.substring(colonIdx + 1).trim()
-        fields[key] = value
-      }
-    })
-    return fields
-  })
+  try {
+    const parsed = typeof text === 'string' ? JSON.parse(text) : text
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
 }
 
 function parseValor(v) {
@@ -88,14 +103,14 @@ export default function RankingVerbas() {
       const verbas = parsePedidosVerbas(p.pedidos_verbas)
       if (!verbas.length) return
       verbas.forEach(v => {
-        const nome = v['tipo verba'] || 'Não Informada'
+        const nome = v.tipo_verba || 'Não Informada'
         if (!map[nome]) map[nome] = { name: nome, count: 0, value: 0, deferida: 0, valorDeferido: 0 }
         map[nome].count++
-        map[nome].value += parseValor(v['valor pedido'])
-        const status = (v['status pedido'] || '').toLowerCase()
+        map[nome].value += parseValor(v.valor_pedido)
+        const status = (v.status_pedido || '').toLowerCase()
         if (status.includes('deferido') && !status.includes('indeferido')) {
           map[nome].deferida++
-          map[nome].valorDeferido += parseValor(v['valor deferido sentenca']) + parseValor(v['valor deferido acordao'])
+          map[nome].valorDeferido += parseValor(v.valor_deferido_sentenca) + parseValor(v.valor_deferido_acordao)
         }
       })
     })
@@ -171,7 +186,10 @@ export default function RankingVerbas() {
       <div className="grid grid-cols-2 gap-6">
         {/* Verbas Mais Pedidas (Quantidade) */}
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-base font-semibold text-gray-800 mb-4">Verbas Mais Pedidas (Quantidade)</h3>
+          <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            Verbas Mais Pedidas (Quantidade)
+            <InfoTip text="Ranking das verbas trabalhistas mais solicitadas nos processos, ordenadas pela quantidade de vezes que foram pedidas." />
+          </h3>
           <ResponsiveContainer width="100%" height={360}>
             <BarChart data={topByCount} layout="vertical" margin={{ left: 10, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
@@ -194,7 +212,10 @@ export default function RankingVerbas() {
 
         {/* Verbas por Valor Pedido */}
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-base font-semibold text-gray-800 mb-4">Verbas por Valor Pedido</h3>
+          <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            Verbas por Valor Pedido
+            <InfoTip text="Ranking das verbas trabalhistas pelo valor total pedido nos processos. Valores 'não disponíveis' são contabilizados como R$ 0,00." />
+          </h3>
           <ResponsiveContainer width="100%" height={360}>
             <BarChart data={topByValue} layout="vertical" margin={{ left: 10, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
@@ -222,7 +243,10 @@ export default function RankingVerbas() {
 
       {/* Evolução Mensal */}
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-base font-semibold text-gray-800 mb-4">Evolução Mensal de Processos</h3>
+        <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          Evolução Mensal de Processos
+          <InfoTip text="Quantidade de processos distribuídos por mês, com base na data de distribuição de cada processo." />
+        </h3>
         <ResponsiveContainer width="100%" height={220}>
           <AreaChart data={monthlyData} margin={{ left: 0, right: 10 }}>
             <defs>
@@ -248,7 +272,10 @@ export default function RankingVerbas() {
 
       {/* Tabela de Verbas */}
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-base font-semibold text-gray-800 mb-4">Ranking de Verbas</h3>
+        <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          Ranking de Verbas
+          <InfoTip text="Tabela detalhada com quantidade pedida, deferida, valores totais e médios, e taxa de sucesso (% de pedidos deferidos) de cada verba." />
+        </h3>
         <div className="overflow-auto max-h-[400px]">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-white z-10">

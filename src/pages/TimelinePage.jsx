@@ -2,12 +2,14 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { Search, X, Loader2, AlertTriangle, ChevronUp, ChevronDown, Navigation } from 'lucide-react'
 import { useFilterContext } from '../hooks/useFilters'
 import { parseCurrency, formatCurrency, parseDate } from '../utils/format'
+import { supabase } from '../lib/supabase'
 
 // ─── Badge colors por tipo de ato ────────────────────────
 const TYPE_BADGE = {
   'Despacho': 'bg-green-600 text-white',
   'Sentença': 'bg-red-600 text-white',
   'Audiência': 'bg-blue-600 text-white',
+  'Ata da Audiência': 'bg-blue-500 text-white',
   'Movimentação': 'bg-yellow-500 text-white',
   'Decisão': 'bg-purple-600 text-white',
   'Acordo': 'bg-emerald-600 text-white',
@@ -23,34 +25,27 @@ function InfoRow({ label, value }) {
   )
 }
 
-// ─── Parse atos_decisorios ───────────────────────────────
-function parseAtos(text) {
-  if (!text) return []
 
-  // Split por dupla quebra de linha ou padrão "tipo ato:" no início
-  const blocks = text.split(/(?=tipo ato:)/gi).filter(b => b.trim())
-
-  return blocks.map(block => {
-    const fields = {}
-    // Split por " | " para separar campos
-    const parts = block.split('|').map(s => s.trim())
-    parts.forEach(part => {
-      const colonIdx = part.indexOf(':')
-      if (colonIdx > 0) {
-        const key = part.substring(0, colonIdx).trim().toLowerCase()
-        const value = part.substring(colonIdx + 1).trim()
-        fields[key] = value
-      }
-    })
-    return fields
-  })
-}
-
-// ─── Timeline Item (atos_decisorios) ─────────────────────
+// ─── Timeline Item (etapa0) ──────────────────────────────
 function AtoItem({ ato, isLast }) {
-  const tipo = ato['tipo ato'] || 'Despacho'
-  const data = ato['data movimentacao'] || ato['data prazo'] || '—'
-  const badgeClass = TYPE_BADGE[tipo] || 'bg-gray-600 text-white'
+  const tipo = ato.tipo && ato.tipo !== 'undefined' ? ato.tipo : null
+  const badgeClass = tipo ? (TYPE_BADGE[tipo] || 'bg-gray-600 text-white') : null
+  const justificativa = ato.justificativa && ato.justificativa !== 'Sem evidencia no documento analisado.' ? ato.justificativa : null
+
+  // Formatar data (limpar prefixos como "Data do documento: ")
+  const dataFormatada = useMemo(() => {
+    if (!ato.data) return '—'
+    try {
+      // Extrair a parte ISO da string (ex: "Data do documento: 2026-03-03T14:05:51")
+      const isoMatch = ato.data.match(/\d{4}-\d{2}-\d{2}T[\d:.]+/)
+      const raw = isoMatch ? isoMatch[0] : ato.data
+      const d = new Date(raw)
+      if (isNaN(d.getTime())) return '—'
+      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    } catch {
+      return '—'
+    }
+  }, [ato.data])
 
   return (
     <div className="flex gap-4">
@@ -62,52 +57,33 @@ function AtoItem({ ato, isLast }) {
       {/* Content */}
       <div className="bg-gray-50 rounded-xl border border-gray-100 px-5 py-4 mb-4 flex-1">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-xs text-gray-500">{data}</span>
-          <span className={`text-xs px-2 py-0.5 rounded font-medium ${badgeClass}`}>
-            {tipo}
-          </span>
-          {ato['favorecido decisao'] && (
-            <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
-              {ato['favorecido decisao']}
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-xs text-gray-500">{dataFormatada}</span>
+          {tipo && (
+            <span className={`text-xs px-2 py-0.5 rounded font-medium ${badgeClass}`}>
+              {tipo}
+            </span>
+          )}
+          {ato.id && ato.id !== 'undefined' && (
+            <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+              {ato.id}
             </span>
           )}
         </div>
 
-        {/* Resumo */}
-        {ato['resumo padronizado'] && (
-          <p className="text-sm text-gray-700 leading-relaxed mb-3">
-            {ato['resumo padronizado']}
+        {/* Descrição */}
+        {ato.descricao && (
+          <p className="text-sm text-gray-700 leading-relaxed">
+            {ato.descricao}
           </p>
         )}
 
-        {/* Detalhes em grid */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-          {ato['juiz relator'] && (
-            <div className="flex gap-2 text-xs">
-              <span className="text-gray-400">Juiz/Relator:</span>
-              <span className="text-gray-700 font-medium">{ato['juiz relator']}</span>
-            </div>
-          )}
-          {ato['proximo prazo'] && (
-            <div className="flex gap-2 text-xs">
-              <span className="text-gray-400">Próximo prazo:</span>
-              <span className="text-gray-700 font-medium">{ato['proximo prazo']}</span>
-            </div>
-          )}
-          {ato['data prazo'] && ato['data prazo'] !== 'informacao nao disponivel' && (
-            <div className="flex gap-2 text-xs">
-              <span className="text-gray-400">Data prazo:</span>
-              <span className="text-gray-700 font-medium">{ato['data prazo']}</span>
-            </div>
-          )}
-          {ato['valor envolvido'] && (
-            <div className="flex gap-2 text-xs">
-              <span className="text-gray-400">Valor envolvido:</span>
-              <span className="text-gray-700 font-semibold text-red-600">{ato['valor envolvido']}</span>
-            </div>
-          )}
-        </div>
+        {/* Justificativa */}
+        {justificativa && (
+          <p className="text-xs text-gray-500 mt-2 italic leading-relaxed">
+            {justificativa}
+          </p>
+        )}
       </div>
     </div>
   )
@@ -306,27 +282,76 @@ export default function TimelinePage() {
     return agrupados.find(p => (p.numero_processo || `#${p.id}`) === selectedKey) || null
   }, [selectedKey, agrupados])
 
-  // Parse atos_decisorios de TODAS as duplicatas do processo
-  const atosTimeline = useMemo(() => {
-    if (!selected) return []
-    const allAtos = []
-    selected._duplicatas.forEach(p => {
-      allAtos.push(...parseAtos(p.atos_decisorios))
-    })
-    // Ordenar por data_movimentacao (mais recente primeiro)
-    allAtos.sort((a, b) => {
-      const da = a['data movimentacao'] || ''
-      const db = b['data movimentacao'] || ''
-      if (!da && !db) return 0
-      if (!da) return 1
-      if (!db) return -1
-      const pa = parseDate(da)
-      const pb = parseDate(db)
-      if (pa && pb) return pb - pa
-      return db.localeCompare(da)
-    })
-    return allAtos
-  }, [selected])
+  // Buscar atos da tabela resultados_analise_medmais
+  const [atosTimeline, setAtosTimeline] = useState([])
+  const [loadingAtos, setLoadingAtos] = useState(false)
+
+  useEffect(() => {
+    if (!selected?.numero_processo) {
+      setAtosTimeline([])
+      return
+    }
+
+    let cancelled = false
+    async function fetchAtos() {
+      setLoadingAtos(true)
+      const { data, error } = await supabase
+        .from('resultados_analise_medmais')
+        .select('table')
+        .eq('numero_caso', selected.numero_processo)
+
+      if (cancelled) return
+      if (error || !data?.length) {
+        setAtosTimeline([])
+        setLoadingAtos(false)
+        return
+      }
+
+      const allAtos = []
+      data.forEach(row => {
+        try {
+          const raw = typeof row.table === 'string' ? JSON.parse(row.table) : row.table
+          // table pode ser: array, objeto com chaves numéricas, ou um único ato
+          let items
+          if (Array.isArray(raw)) {
+            items = raw
+          } else if (raw && typeof raw === 'object' && 'data' in raw) {
+            // Objeto único (um ato só)
+            items = [raw]
+          } else {
+            // Objeto com chaves numéricas {"0": {...}, "1": {...}}
+            items = Object.values(raw || {})
+          }
+          allAtos.push(...items)
+        } catch { /* ignore parse errors */ }
+      })
+
+      // Extrair parte ISO de datas com prefixo
+      const extractIso = (d) => {
+        if (!d) return ''
+        const m = d.match(/\d{4}-\d{2}-\d{2}T[\d:.]+/)
+        return m ? m[0] : d
+      }
+
+      // Ordenar por data (mais recente primeiro)
+      allAtos.sort((a, b) => {
+        const da = extractIso(a.data)
+        const db = extractIso(b.data)
+        if (!da && !db) return 0
+        if (!da) return 1
+        if (!db) return -1
+        return db.localeCompare(da)
+      })
+
+      // Filtrar itens sem descrição
+      const filtered = allAtos.filter(a => a.descricao && a.descricao.trim())
+      setAtosTimeline(filtered)
+      setLoadingAtos(false)
+    }
+
+    fetchAtos()
+    return () => { cancelled = true }
+  }, [selected?.numero_processo])
 
   // Calcular tramitação em dias
   const tramitacaoDias = useMemo(() => {
@@ -471,13 +496,17 @@ export default function TimelinePage() {
               <span className="text-xs text-gray-400">{atosTimeline.length} ato(s)</span>
             </div>
             <div className="pl-2 max-h-[700px] overflow-auto pr-2">
-              {atosTimeline.length > 0 ? (
+              {loadingAtos ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="animate-spin text-gray-400" size={24} />
+                </div>
+              ) : atosTimeline.length > 0 ? (
                 atosTimeline.map((ato, i) => (
                   <AtoItem key={i} ato={ato} isLast={i === atosTimeline.length - 1} />
                 ))
               ) : (
                 <p className="text-sm text-gray-400 text-center py-8">
-                  Nenhum ato decisório registrado para este processo
+                  Nenhum ato registrado para este processo
                 </p>
               )}
             </div>
