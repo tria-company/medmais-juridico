@@ -9,8 +9,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
   ScatterChart,
   Scatter,
 } from 'recharts'
@@ -20,7 +18,7 @@ import { parseCurrency, formatCurrency } from '../utils/format'
 // ─── Cores ───────────────────────────────────────────────
 const DEPT_COLORS = ['#7E1E00', '#C32F00', '#FF3E00', '#C0A139', '#015100', '#294C99', '#3A0051', '#BD2D00', '#03B700', '#457FFF']
 const CARGO_BLUES = ['#170C80', '#1e2080', '#252e90', '#294C99', '#3560ab', '#4C7DC5', '#457FFF', '#5a8fd5', '#6da0e0', '#80b0ea']
-const DESLIG_COLORS = ['#C32F00', '#5B5B5B', '#294C99', '#03B700', '#8300B7']
+const DESLIG_COLORS = ['#C32F00', '#5B5B5B', '#294C99', '#03B700', '#8300B7', '#BD2D00', '#0077B6', '#E05030', '#457FFF', '#7E1E00', '#C0A139', '#015100', '#3A0051', '#FF8060', '#170C80']
 
 // ─── Custom Tooltip ──────────────────────────────────────
 function BarTooltip({ active, payload }) {
@@ -33,6 +31,25 @@ function BarTooltip({ active, payload }) {
       <p className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-yellow-400" />
         Quantidade – {d.count}
+      </p>
+    </div>
+  )
+}
+
+function DesligTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]?.payload
+  if (!d) return null
+  return (
+    <div className="bg-gray-800 text-white shadow-lg rounded-lg px-3 py-2 text-xs">
+      <p className="font-medium mb-0.5">{d.name}</p>
+      <p className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-orange-400" />
+        Quantidade – {d.count}
+      </p>
+      <p className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-green-400" />
+        Valor – {formatCurrency(d.value)}
       </p>
     </div>
   )
@@ -255,47 +272,30 @@ export default function Prevencao() {
 
       {/* Charts Row 2 */}
       <div className="grid grid-cols-2 gap-6">
-        {/* Tipo de Desligamento - Donut */}
+        {/* Tipo de Desligamento - Horizontal Bar */}
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-base font-semibold text-gray-800 mb-4">Tipo de Desligamento</h3>
-          <div className="flex items-center">
-            <ResponsiveContainer width="55%" height={220}>
-              <PieChart>
-                <Pie
-                  data={desligData.items}
-                  dataKey="count"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  label={false}
-                >
-                  {desligData.items.map((_, i) => (
-                    <Cell key={i} fill={DESLIG_COLORS[i % DESLIG_COLORS.length]} />
-                  ))}
-                </Pie>
-                <text x="50%" y="44%" textAnchor="middle" fontSize="10" fill="#666">
-                  Possível
-                </text>
-                <text x="50%" y="56%" textAnchor="middle" fontSize="10" fontWeight="600" fill="#333">
-                  {formatCurrency(desligData.total)}
-                </text>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex flex-col gap-2.5 ml-2">
-              {desligData.items.map((entry, i) => (
-                <div key={entry.name} className="flex items-center gap-2 text-sm">
-                  <span
-                    className="w-3 h-3 rounded-full shrink-0"
-                    style={{ backgroundColor: DESLIG_COLORS[i % DESLIG_COLORS.length] }}
-                  />
-                  <span className="text-gray-700 font-medium">{entry.name}</span>
-                  <span className="text-gray-500">– {entry.count}</span>
-                </div>
-              ))}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-gray-800">Tipo de Desligamento</h3>
+            <div className="text-right">
+              <p className="text-xs text-gray-400">Valor Possível Total</p>
+              <p className="text-sm font-bold text-gray-800">{formatCurrency(desligData.total)}</p>
+            </div>
+          </div>
+          <div className="overflow-y-auto max-h-[320px]">
+            <div style={{ height: Math.max(220, desligData.items.length * 28 + 30) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={desligData.items} layout="vertical" margin={{ left: 10, right: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 9 }} />
+                  <Tooltip content={<DesligTooltip />} />
+                  <Bar dataKey="count" name="Quantidade" radius={[0, 4, 4, 0]} barSize={18}>
+                    {desligData.items.map((_, i) => (
+                      <Cell key={i} fill={DESLIG_COLORS[i % DESLIG_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
