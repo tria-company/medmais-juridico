@@ -39,6 +39,32 @@ function BarTooltip({ active, payload }) {
   )
 }
 
+function TribunalTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]?.payload
+  if (!d) return null
+  return (
+    <div className="bg-gray-800 text-white shadow-lg rounded-lg px-3 py-2 text-xs">
+      <p className="font-medium mb-1">{d.name}</p>
+      <p>Quantidade – {d.count}</p>
+      <p>Valor – {formatCurrency(d.totalValue)}</p>
+    </div>
+  )
+}
+
+function ProcessoTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]?.payload
+  if (!d) return null
+  return (
+    <div className="bg-gray-800 text-white shadow-lg rounded-lg px-3 py-2 text-xs max-w-xs">
+      <p className="font-medium mb-1 truncate">{d.name}</p>
+      {d.reclamante && <p className="text-gray-300">{d.reclamante}</p>}
+      <p>Valor – {formatCurrency(d.valor)}</p>
+    </div>
+  )
+}
+
 function AreaTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
@@ -149,6 +175,39 @@ export default function RankingVerbas() {
       .map(([month, count]) => ({ month, Processos: count }))
   }, [processos])
 
+  // Ranking de tribunais por valor e quantidade
+  const tribunalData = useMemo(() => {
+    if (!processos.length) return []
+    const map = {}
+    processos.forEach(p => {
+      const tribunal = p.tribunal || 'Não Informado'
+      if (!map[tribunal]) map[tribunal] = { name: tribunal, count: 0, totalValue: 0 }
+      map[tribunal].count++
+      map[tribunal].totalValue += parseCurrency(p.valor_causa_original)
+    })
+    return Object.values(map).sort((a, b) => b.totalValue - a.totalValue)
+  }, [processos])
+
+  const topTribunaisByValue = useMemo(() => tribunalData.slice(0, 12), [tribunalData])
+  const topTribunaisByCount = useMemo(() =>
+    [...tribunalData].sort((a, b) => b.count - a.count).slice(0, 12),
+    [tribunalData]
+  )
+
+  // Ranking de processos individuais por valor
+  const topProcessosByValue = useMemo(() => {
+    if (!processos.length) return []
+    return processos
+      .map(p => ({
+        name: p.numero_processo || 'Sem Número',
+        reclamante: p.nome_reclamante || '',
+        valor: parseCurrency(p.valor_causa_original),
+      }))
+      .filter(p => p.valor > 0)
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 15)
+  }, [processos])
+
   // Tabela de verbas
   const tabelaVerbas = useMemo(() => {
     return verbaData.map(v => ({
@@ -248,6 +307,77 @@ export default function RankingVerbas() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Ranking de Tribunais */}
+      <div className="grid grid-cols-2 gap-6">
+        {/* Tribunais por Quantidade */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            Tribunais por Quantidade
+            <InfoTip text="Ranking dos tribunais pela quantidade de processos." />
+          </h3>
+          <ResponsiveContainer width="100%" height={360}>
+            <BarChart data={topTribunaisByCount} layout="vertical" margin={{ left: 10, right: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10 }} />
+              <Tooltip content={<TribunalTooltip />} />
+              <Bar dataKey="count" name="Quantidade" radius={[0, 4, 4, 0]} barSize={20}>
+                {topTribunaisByCount.map((_, i) => (
+                  <Cell key={i} fill={BLUES[i % BLUES.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Tribunais por Valor */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            Tribunais por Valor
+            <InfoTip text="Ranking dos tribunais pelo valor total da causa original dos processos." />
+          </h3>
+          <ResponsiveContainer width="100%" height={360}>
+            <BarChart data={topTribunaisByValue} layout="vertical" margin={{ left: 10, right: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => formatCurrency(v, true)} />
+              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10 }} />
+              <Tooltip content={<TribunalTooltip />} />
+              <Bar dataKey="totalValue" name="Valor" radius={[0, 4, 4, 0]} barSize={20}>
+                {topTribunaisByValue.map((_, i) => (
+                  <Cell key={i} fill={REDS[i % REDS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Ranking de Processos por Valor */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          Maiores Processos por Valor da Causa
+          <InfoTip text="Top 15 processos individuais com maior valor da causa original." />
+        </h3>
+        <ResponsiveContainer width="100%" height={450}>
+          <BarChart data={topProcessosByValue} layout="vertical" margin={{ left: 10, right: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => formatCurrency(v, true)} />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={180}
+              tick={{ fontSize: 9 }}
+            />
+            <Tooltip content={<ProcessoTooltip />} />
+            <Bar dataKey="valor" name="Valor" radius={[0, 4, 4, 0]} barSize={18}>
+              {topProcessosByValue.map((_, i) => (
+                <Cell key={i} fill={BLUES[i % BLUES.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Evolução Mensal */}
