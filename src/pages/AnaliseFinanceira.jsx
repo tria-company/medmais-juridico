@@ -146,10 +146,10 @@ export default function AnaliseFinanceira() {
       : 0
 
     const totalAtualizado = processos.reduce(
-      (sum, p) => sum + parseCurrency(p.valor_atualizado || p.valor_provisionado), 0
+      (sum, p) => sum + parseCurrency(p.valor_total_atualizado || p.valor_provisionado), 0
     )
     const processosAtualizados = processos.filter(
-      p => parseCurrency(p.valor_atualizado || p.valor_provisionado) > 0
+      p => parseCurrency(p.valor_total_atualizado || p.valor_provisionado) > 0
     ).length
 
     // Condenações: processos com valor_total_condenacao > 0
@@ -158,8 +158,10 @@ export default function AnaliseFinanceira() {
       (sum, p) => sum + parseCurrency(p.valor_total_condenacao) + parseCurrency(p.valor_acordo_pos_sentenca), 0
     )
 
-    // Absolvições = valor_causa_original dos processos ganhos (Arquivado)
-    const absolvidos = processos.filter(p => p.status_processo === 'Absolvido')
+    // Absolvições = processos com status Encerrado-Improcedente ou Improcedente
+    const absolvidos = processos.filter(p =>
+      p.status_processo === 'Encerrado-Improcedente' || p.status_processo === 'Improcedente'
+    )
     const totalAbsolvicoes = absolvidos.reduce(
       (sum, p) => sum + parseCurrency(p.valor_causa_original), 0
     )
@@ -202,7 +204,7 @@ export default function AnaliseFinanceira() {
       const filial = p.filial_unidade_processo || 'Não Informada'
       if (!map[filial]) map[filial] = { name: filial, pedido: 0, condenado: 0, acordo: 0 }
       map[filial].pedido += parseCurrency(p.valor_causa_original)
-      map[filial].condenado += parseCurrency(p.valor_causa_original)
+      map[filial].condenado += parseCurrency(p.valor_total_condenacao)
       map[filial].acordo += parseCurrency(p.valor_acordo_pos_sentenca)
     })
     return Object.values(map).sort((a, b) => b.pedido - a.pedido).slice(0, 8)
@@ -215,7 +217,7 @@ export default function AnaliseFinanceira() {
       .map(p => ({
         numero: p.numero_processo || '-',
         reclamante: p.nome_reclamante || p.parte_contraria || '-',
-        valor: parseCurrency(p.valor_atualizado || p.valor_provisionado),
+        valor: parseCurrency(p.valor_total_atualizado || p.valor_provisionado),
         risco: p.classificacao_risco || 'Não Informado',
       }))
       .sort((a, b) => b.valor - a.valor)

@@ -33,7 +33,7 @@ function BarTooltip({ active, payload }) {
       </p>
       <p className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-red-400" />
-        Valor – {formatCurrency(d.value)}
+        Valor – {formatCurrency(d.totalValue)}
       </p>
     </div>
   )
@@ -104,9 +104,9 @@ export default function RankingVerbas() {
       if (!verbas.length) return
       verbas.forEach(v => {
         const nome = v.tipo_verba || 'Não Informada'
-        if (!map[nome]) map[nome] = { name: nome, count: 0, value: 0, deferida: 0, valorDeferido: 0 }
+        if (!map[nome]) map[nome] = { name: nome, count: 0, totalValue: 0, deferida: 0, valorDeferido: 0 }
         map[nome].count++
-        map[nome].value += parseValor(v.valor_pedido)
+        map[nome].totalValue += parseValor(v.valor_pedido)
         const status = (v.status_pedido || '').toLowerCase()
         if (status.includes('deferido') && !status.includes('indeferido')) {
           map[nome].deferida++
@@ -114,7 +114,7 @@ export default function RankingVerbas() {
         }
       })
     })
-    return Object.values(map).sort((a, b) => b.count - a.count)
+    return Object.values(map).sort((a, b) => b.totalValue - a.totalValue)
   }, [processos])
 
   // Top por quantidade
@@ -124,8 +124,10 @@ export default function RankingVerbas() {
 
   // Top por valor
   const topByValue = useMemo(() => {
-    return [...verbaData].sort((a, b) => b.value - a.value).slice(0, 12)
+    return [...verbaData].sort((a, b) => b.totalValue - a.totalValue).slice(0, 12)
   }, [verbaData])
+
+  const hasValueData = useMemo(() => topByValue.some(v => v.totalValue > 0), [topByValue])
 
   // Evolução mensal
   const monthlyData = useMemo(() => {
@@ -153,8 +155,8 @@ export default function RankingVerbas() {
       name: v.name,
       qtdPedida: v.count,
       qtdDeferida: v.deferida,
-      valorTotal: v.value,
-      valorMedio: v.count > 0 ? v.value / v.count : 0,
+      valorTotal: v.totalValue,
+      valorMedio: v.count > 0 ? v.totalValue / v.count : 0,
       taxaSucesso: v.count > 0 ? ((v.deferida / v.count) * 100).toFixed(1) : '0.0',
     }))
   }, [verbaData])
@@ -216,28 +218,35 @@ export default function RankingVerbas() {
             Verbas por Valor Pedido
             <InfoTip text="Ranking das verbas trabalhistas pelo valor total pedido nos processos. Valores 'não disponíveis' são contabilizados como R$ 0,00." />
           </h3>
-          <ResponsiveContainer width="100%" height={360}>
-            <BarChart data={topByValue} layout="vertical" margin={{ left: 10, right: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis
-                type="number"
-                tick={{ fontSize: 11 }}
-                tickFormatter={v => formatCurrency(v, true)}
-              />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={140}
-                tick={{ fontSize: 10 }}
-              />
-              <Tooltip content={<BarTooltip />} />
-              <Bar dataKey="value" name="Valor" radius={[0, 4, 4, 0]} barSize={20}>
-                {topByValue.map((_, i) => (
-                  <Cell key={i} fill={REDS[i % REDS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {hasValueData ? (
+            <ResponsiveContainer width="100%" height={360}>
+              <BarChart data={topByValue} layout="vertical" margin={{ left: 10, right: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 11 }}
+                  domain={[0, 'dataMax']}
+                  tickFormatter={v => formatCurrency(v, true)}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={140}
+                  tick={{ fontSize: 10 }}
+                />
+                <Tooltip content={<BarTooltip />} />
+                <Bar dataKey="totalValue" name="Valor" radius={[0, 4, 4, 0]} barSize={20}>
+                  {topByValue.map((_, i) => (
+                    <Cell key={i} fill={REDS[i % REDS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[360px] text-gray-400 text-sm">
+              Dados de valor não disponíveis para as verbas encontradas.
+            </div>
+          )}
         </div>
       </div>
 

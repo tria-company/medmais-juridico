@@ -35,7 +35,7 @@ export function useFilters(processos) {
 
     return {
       filiais: unique('filial_unidade_processo'),
-      departamentos: unique('departamento'),
+      departamentos: unique('departamento_reclamante'),
       riscos: unique('classificacao_risco'),
       fases: unique('fase_processual_atual'),
       status: unique('status_processo'),
@@ -48,7 +48,7 @@ export function useFilters(processos) {
   const filtered = useMemo(() => {
     return processos.filter(p => {
       if (filters.filial && p.filial_unidade_processo !== filters.filial) return false
-      if (filters.departamento && p.departamento !== filters.departamento) return false
+      if (filters.departamento && p.departamento_reclamante !== filters.departamento) return false
       if (filters.risco && p.classificacao_risco !== filters.risco) return false
       if (filters.fase && p.fase_processual_atual !== filters.fase) return false
       if (filters.status && p.status_processo !== filters.status) return false

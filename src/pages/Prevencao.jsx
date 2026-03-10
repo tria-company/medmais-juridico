@@ -162,7 +162,7 @@ export default function Prevencao() {
     if (!processos.length) return []
     const map = {}
     processos.forEach(p => {
-      const gestor = p.gestor || p.advogado_responsavel || 'Não informado'
+      const gestor = p.gestor_direto || p.advogados_ambas_partes || 'Não informado'
       map[gestor] = (map[gestor] || 0) + 1
     })
     return Object.entries(map)

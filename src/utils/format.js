@@ -10,10 +10,13 @@ export function parseCurrency(value) {
     .trim()
   if (!cleaned) return 0
   // Formato brasileiro: 1.234,56 → remover pontos e trocar vírgula por ponto
+  let result
   if (cleaned.includes(',')) {
-    return parseFloat(cleaned.replace(/\./g, '').replace(',', '.')) || 0
+    result = parseFloat(cleaned.replace(/\./g, '').replace(',', '.'))
+  } else {
+    result = parseFloat(cleaned)
   }
-  return parseFloat(cleaned) || 0
+  return isFinite(result) && result > 0 ? result : 0
 }
 
 /**

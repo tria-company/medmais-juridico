@@ -174,8 +174,8 @@ function ProcessDetail({ p }) {
           {/* Atualização Financeira */}
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
             <h4 className="text-sm font-semibold text-gray-800 mb-2">Atualização Financeira</h4>
-            <InfoRow label="Atualizado" value={formatCurrency(parseCurrency(p.valor_atualizado || p.valor_provisionado))} />
-            <InfoRow label="Líquido" value={formatCurrency(parseCurrency(p.valor_liquido || '0'))} />
+            <InfoRow label="Atualizado" value={formatCurrency(parseCurrency(p.valor_total_atualizado || p.valor_provisionado))} />
+            <InfoRow label="Líquido" value={formatCurrency(parseCurrency(p.valor_liquido_estimado || '0'))} />
           </div>
 
           {/* Últimos Atos */}
@@ -190,13 +190,7 @@ function ProcessDetail({ p }) {
                   </p>
                 </div>
               )}
-              {p.data_audiencia && (
-                <div className="text-xs">
-                  <span className="text-gray-400">{p.data_audiencia}</span>
-                  <p className="text-gray-700 mt-0.5">{p.tipo_audiencia || 'Audiência'}</p>
-                </div>
-              )}
-              {!p.data_ultima_movimentacao && !p.data_audiencia && (
+              {!p.data_ultima_movimentacao && (
                 <p className="text-xs text-gray-400">Nenhum ato registrado</p>
               )}
             </div>
