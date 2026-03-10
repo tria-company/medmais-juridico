@@ -77,6 +77,12 @@ export default function Navbar({ filtersOpen, onToggleFilters, totalProcessos, f
             <Filter size={16} />
             Filtros
           </button>
+          <a
+            href="https://dashboards-ecru-tau.vercel.app/"
+            className="rounded-full bg-[#2c3545] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#3d4a5c]"
+          >
+            Menu Principal
+          </a>
         </div>
       </div>
     </header>
